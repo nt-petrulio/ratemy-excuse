@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     locale: 'en_US',
     images: [
       {
-        url: '/og-image.png',
+        url: '/opengraph-image',
         width: 1200,
         height: 630,
         alt: 'ratemy.excuse — AI-powered excuse engineering',
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'ratemy.excuse — AI Excuse Generator & Rater',
     description: 'Submit your excuse. Get graded A-F. Or let AI cook one for you. 🎭',
-    images: ['/og-image.png'],
+    images: ['/opengraph-image'],
   },
   robots: {
     index: true,
