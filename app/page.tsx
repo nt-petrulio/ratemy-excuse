@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+const PremiumModal = dynamic(() => import('@/components/PremiumModal'), { ssr: false });
 
 const SCENARIO_EMOJIS: Record<string, string> = {
   'late to work': '⏰',
@@ -14,8 +17,17 @@ const SCENARIO_EMOJIS: Record<string, string> = {
 const PRESET_CONTEXTS = ['Work', 'Mom', 'School'] as const;
 type PresetContext = typeof PRESET_CONTEXTS[number];
 
+const LEADERBOARD = [
+  { rank: 1, excuse: "My therapist called mid-commute and said it was either this session or a breakdown — I chose growth.", grade: 'A+', votes: 2847, ctx: 'Work' },
+  { rank: 2, excuse: "My dog ate my charger and I had to wait for my neighbor's kid to explain it wasn't funny.", grade: 'A', votes: 1923, ctx: 'Mom' },
+  { rank: 3, excuse: "I was finishing a Stack Overflow answer that apparently 147 people were waiting on. You're welcome, internet.", grade: 'A', votes: 1654, ctx: 'Work' },
+  { rank: 4, excuse: "My Duolingo streak was at 364 days. I made the only reasonable choice.", grade: 'B', votes: 1201, ctx: 'School' },
+  { rank: 5, excuse: "The bus driver and I had a philosophical disagreement about whether 'on time' is a social construct.", grade: 'B', votes: 987, ctx: 'Work' },
+];
+
 export default function HomePage() {
   const router = useRouter();
+  const [showPremium, setShowPremium] = useState(false);
   const [dailyExcuse, setDailyExcuse] = useState<{
     excuse: string;
     scenario: string;
@@ -104,12 +116,17 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
+      {showPremium && <PremiumModal onClose={() => setShowPremium(false)} />}
+
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-4xl mx-auto">
         <span className="text-2xl font-black text-violet-600 tracking-tight">
           ratemy<span className="text-pink-500">.</span>excuse
         </span>
-        <button className="bg-gradient-to-r from-violet-500 to-pink-500 text-white text-sm font-bold px-4 py-2 rounded-full hover:opacity-90 transition">
+        <button
+          onClick={() => setShowPremium(true)}
+          className="bg-gradient-to-r from-violet-500 to-pink-500 text-white text-sm font-bold px-4 py-2 rounded-full hover:opacity-90 transition"
+        >
           ✨ Go Premium
         </button>
       </nav>
@@ -292,15 +309,57 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Leaderboard */}
+        <section className="mb-10">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-2xl">🏆</span>
+            <h2 className="text-xl font-black text-gray-700">Hall of Fame</h2>
+            <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full ml-1">FREE</span>
+            <span className="text-xs text-gray-400 font-semibold ml-auto">This week's legends</span>
+          </div>
+          <div className="bg-white rounded-3xl shadow-xl border border-yellow-100 overflow-hidden">
+            {LEADERBOARD.map((entry, i) => (
+              <div
+                key={entry.rank}
+                className={`flex items-center gap-4 px-6 py-4 ${i < LEADERBOARD.length - 1 ? 'border-b border-gray-50' : ''} hover:bg-gray-50 transition`}
+              >
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${
+                  entry.rank === 1 ? 'bg-yellow-400 text-white' :
+                  entry.rank === 2 ? 'bg-gray-300 text-gray-700' :
+                  entry.rank === 3 ? 'bg-amber-600 text-white' :
+                  'bg-gray-100 text-gray-500'
+                }`}>
+                  {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-700 leading-snug line-clamp-2">&ldquo;{entry.excuse}&rdquo;</p>
+                  <p className="text-xs text-gray-400 font-semibold mt-0.5">{entry.ctx} · {entry.votes.toLocaleString()} votes</p>
+                </div>
+                <div className={`flex-shrink-0 px-2.5 py-1 rounded-lg font-black text-sm ${
+                  entry.grade === 'A+' ? 'bg-emerald-100 text-emerald-700' :
+                  entry.grade === 'A'  ? 'bg-green-100 text-green-700' :
+                  'bg-blue-100 text-blue-700'
+                }`}>
+                  {entry.grade}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Premium CTA */}
         <section>
           <div className="bg-gradient-to-r from-violet-600 to-pink-500 rounded-3xl p-8 text-white text-center shadow-2xl">
             <div className="text-4xl mb-3">👑</div>
             <h3 className="text-2xl font-black mb-2">Want better excuses?</h3>
-            <p className="text-violet-100 font-semibold mb-5">
-              Unlock premium AI excuses, unlimited ratings, and a personal excuse library.
+            <p className="text-violet-100 font-semibold mb-2">
+              Unlock the <strong>Excuse Fixer</strong>, leaderboard entries, and unlimited ratings.
             </p>
-            <button className="bg-white text-violet-700 font-black px-8 py-3 rounded-2xl hover:bg-violet-50 transition text-lg">
+            <p className="text-white/80 font-bold text-lg mb-5">$1.29<span className="text-white/60 font-semibold text-sm">/month · First week free</span></p>
+            <button
+              onClick={() => setShowPremium(true)}
+              className="bg-white text-violet-700 font-black px-8 py-3 rounded-2xl hover:bg-violet-50 transition text-lg"
+            >
               Go Premium →
             </button>
           </div>

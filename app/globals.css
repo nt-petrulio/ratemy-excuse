@@ -42,3 +42,8 @@ body {
 .pulse-ring {
   animation: pulse-ring 2s infinite;
 }
+
+@keyframes fadeInScale {
+  0% { transform: scale(0.92); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
