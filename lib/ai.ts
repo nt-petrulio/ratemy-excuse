@@ -1,9 +1,22 @@
 // AI provider abstraction — swap Gemini ↔ Claude ↔ OpenAI by changing one line
 export type AIProvider = 'gemini' | 'claude' | 'openai';
 
-const PROVIDER: AIProvider = 'gemini';
+const PROVIDER: AIProvider = 'openai';
 
 export async function generateText(prompt: string): Promise<string> {
+  if (PROVIDER === 'openai') {
+    const OpenAI = (await import('openai')).default;
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
+
+    const client = new OpenAI({ apiKey });
+    const completion = await client.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+    });
+    return completion.choices[0].message.content ?? '';
+  }
+
   if (PROVIDER === 'gemini') {
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const apiKey = process.env.GEMINI_API_KEY;
@@ -23,15 +36,6 @@ export async function generateText(prompt: string): Promise<string> {
     // const msg = await client.messages.create({ model: 'claude-3-5-sonnet-20241022', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] });
     // return (msg.content[0] as { type: string; text: string }).text;
     throw new Error('Claude provider not yet configured');
-  }
-
-  if (PROVIDER === 'openai') {
-    // Future: use openai npm package
-    // const OpenAI = (await import('openai')).default;
-    // const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    // const completion = await client.chat.completions.create({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }] });
-    // return completion.choices[0].message.content ?? '';
-    throw new Error('OpenAI provider not yet configured');
   }
 
   throw new Error(`Provider ${PROVIDER} not configured`);

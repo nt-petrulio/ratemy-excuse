@@ -13,11 +13,11 @@ export interface RatingResult {
 const FALLBACK_RATING: RatingResult = {
   grade: 'B',
   score: 72,
-  verdict: "A solid attempt — believable enough to buy some time, but it won't fool a seasoned excuse-detector.",
+  verdict: "Okay, not bad — I've heard worse, but I've also definitely heard better.",
   tips: [
-    'Add a specific time and location to make it more verifiable.',
-    'Mention a third-party witness or evidence to boost credibility.',
-    'Practice delivering it with just the right amount of regret.',
+    "Add a specific detail, like a name or a time — it makes the whole thing way more believable.",
+    "You sound a little rehearsed, maybe stumble a bit more when you say it out loud.",
+    "Throw in a small inconvenient detail that nobody would bother making up.",
   ],
   believability: 68,
   creativity: 75,
@@ -31,32 +31,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No excuse provided' }, { status: 400 });
   }
 
-  const contextLine = context ? `Context: ${context}\n` : '';
+  const contextLine = context ? `Context: this is an excuse for ${context}.\n` : '';
 
-  const prompt = `You are a professional excuse evaluator with a PhD in Plausibility Studies.
+  const prompt = `You're a witty, slightly sarcastic friend rating someone's excuse. Be honest but funny. Use casual language, not corporate speak. Grade from A+ to F.
 
-Rate the following excuse:
-"${excuse.trim()}"
+The excuse: "${excuse.trim()}"
 ${contextLine}
 Return ONLY a valid JSON object (no markdown, no explanation) with these exact fields:
 {
   "grade": "A+", "A", "B", "C", "D", or "F",
   "score": number between 0-100,
-  "verdict": "one sentence verdict (funny but constructive)",
-  "tips": ["tip 1", "tip 2", "tip 3"],
+  "verdict": "1 funny sentence — your honest reaction as a friend",
+  "tips": ["tip 1 written like a friend giving real advice", "tip 2", "tip 3"],
   "believability": number between 0-100,
   "creativity": number between 0-100
 }
 
-Grading rubric:
-- A+ (90-100): Masterpiece. Almost true-sounding. They'll never know.
-- A (80-89): Excellent. High believability, creative, well-structured.
-- B (65-79): Good attempt. Believable but a bit generic.
-- C (50-64): Mediocre. Raises some eyebrows.
-- D (30-49): Weak. Too obvious or too outrageous.
-- F (0-29): Catastrophic fail. Just tell the truth instead.
+Grading (be a tough but fair friend):
+- A+ (90-100): Honestly I'd believe this myself. Masterpiece.
+- A (80-89): Pretty solid, I'd probably let it slide.
+- B (65-79): Not bad, but I can kinda tell.
+- C (50-64): Ehh, you're gonna need to work on your delivery.
+- D (30-49): Bro. Just... no.
+- F (0-29): Please just tell the truth, it's less embarrassing.
 
-Be witty in your verdict and tips. Return ONLY the JSON object.`;
+Return ONLY the JSON object.`;
 
   try {
     const raw = await generateText(prompt);

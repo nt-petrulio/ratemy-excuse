@@ -11,12 +11,16 @@ const SCENARIO_EMOJIS: Record<string, string> = {
   'late to meeting': '📅',
 };
 
+const PRESET_CONTEXTS = ['Work', 'Mom', 'School'] as const;
+type PresetContext = typeof PRESET_CONTEXTS[number];
+
 export default function HomePage() {
   const router = useRouter();
   const [dailyExcuse, setDailyExcuse] = useState<{
     excuse: string;
     scenario: string;
     date: string;
+    context?: string;
   } | null>(null);
   const [loadingDaily, setLoadingDaily] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -25,11 +29,20 @@ export default function HomePage() {
   const [loadingTimer, setLoadingTimer] = useState(true);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Context selector state
+  const [activeContext, setActiveContext] = useState<PresetContext | 'Custom'>('Work');
+  const [customContext, setCustomContext] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+
+  const getContextValue = () => {
+    if (activeContext === 'Custom') return customContext.trim() || 'work';
+    return activeContext.toLowerCase();
+  };
+
   useEffect(() => {
-    // 3-second fake loading for theatrics
     timerRef.current = setTimeout(() => {
       setLoadingTimer(false);
-      fetchDailyExcuse();
+      fetchDailyExcuse('work');
     }, 3000);
 
     return () => {
@@ -37,9 +50,11 @@ export default function HomePage() {
     };
   }, []);
 
-  const fetchDailyExcuse = async () => {
+  const fetchDailyExcuse = async (context?: string) => {
+    setLoadingDaily(true);
     try {
-      const res = await fetch('/api/daily-excuse');
+      const ctx = context ?? getContextValue();
+      const res = await fetch(`/api/daily-excuse?context=${encodeURIComponent(ctx)}`);
       const data = await res.json();
       setDailyExcuse(data);
     } catch {
@@ -50,6 +65,22 @@ export default function HomePage() {
       });
     } finally {
       setLoadingDaily(false);
+    }
+  };
+
+  const handleContextChange = (ctx: PresetContext | 'Custom') => {
+    setActiveContext(ctx);
+    if (ctx === 'Custom') {
+      setShowCustomInput(true);
+    } else {
+      setShowCustomInput(false);
+      if (!loadingTimer) fetchDailyExcuse(ctx.toLowerCase());
+    }
+  };
+
+  const handleCustomSubmit = () => {
+    if (customContext.trim() && !loadingTimer) {
+      fetchDailyExcuse(customContext.trim());
     }
   };
 
@@ -64,8 +95,8 @@ export default function HomePage() {
   const handleRate = async () => {
     if (!userExcuse.trim() || rating) return;
     setRating(true);
-    // Store excuse in sessionStorage and navigate to rate page
     sessionStorage.setItem('pendingExcuse', userExcuse.trim());
+    sessionStorage.setItem('excuseContext', getContextValue());
     router.push('/rate');
   };
 
@@ -95,6 +126,56 @@ export default function HomePage() {
           <p className="text-xl md:text-2xl text-gray-500 font-semibold">
             AI-powered excuses. Rated. Perfected. 🎭
           </p>
+        </section>
+
+        {/* Context Selector */}
+        <section className="mb-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-bold text-gray-500 whitespace-nowrap">Excuse for:</span>
+            {PRESET_CONTEXTS.map((ctx) => (
+              <button
+                key={ctx}
+                onClick={() => handleContextChange(ctx)}
+                className={`px-4 py-1.5 rounded-full text-sm font-bold transition border-2 ${
+                  activeContext === ctx
+                    ? 'bg-violet-600 border-violet-600 text-white shadow-md'
+                    : 'bg-white border-gray-200 text-gray-600 hover:border-violet-300 hover:text-violet-600'
+                }`}
+              >
+                {ctx}
+              </button>
+            ))}
+            <button
+              onClick={() => handleContextChange('Custom')}
+              className={`px-4 py-1.5 rounded-full text-sm font-bold transition border-2 ${
+                activeContext === 'Custom'
+                  ? 'bg-pink-500 border-pink-500 text-white shadow-md'
+                  : 'bg-white border-gray-200 text-gray-600 hover:border-pink-300 hover:text-pink-500'
+              }`}
+            >
+              Custom...
+            </button>
+            {showCustomInput && (
+              <div className="flex items-center gap-2 mt-1 w-full sm:w-auto sm:mt-0">
+                <input
+                  type="text"
+                  value={customContext}
+                  onChange={(e) => setCustomContext(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCustomSubmit()}
+                  placeholder="e.g. my boss, my gym teacher..."
+                  className="border-2 border-pink-200 focus:border-pink-400 rounded-full px-4 py-1.5 text-sm font-semibold outline-none transition text-gray-700 w-56"
+                  autoFocus
+                />
+                <button
+                  onClick={handleCustomSubmit}
+                  disabled={!customContext.trim()}
+                  className="bg-pink-500 hover:bg-pink-600 text-white font-bold px-4 py-1.5 rounded-full text-sm transition disabled:opacity-40"
+                >
+                  Go →
+                </button>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Daily Excuse Card */}
@@ -148,7 +229,7 @@ export default function HomePage() {
                         {copied ? '✅ Copied!' : '📋 Copy Excuse'}
                       </button>
                       <button
-                        onClick={fetchDailyExcuse}
+                        onClick={() => fetchDailyExcuse()}
                         className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-6 py-3 rounded-2xl transition text-sm"
                       >
                         🔄 New Excuse
@@ -162,7 +243,6 @@ export default function HomePage() {
         </section>
 
         {/* Ad Slot */}
-        {/* AD SLOT — AdSense banner goes here */}
         <div className="my-8 flex justify-center">
           <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl flex items-center justify-center text-gray-400 text-sm font-semibold" style={{ width: '100%', maxWidth: 728, height: 90 }}>
             Advertisement

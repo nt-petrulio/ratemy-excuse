@@ -65,11 +65,12 @@ export default function RatePage() {
   }, [router]);
 
   const fetchRating = async (excuseText: string) => {
+    const context = sessionStorage.getItem('excuseContext') || undefined;
     try {
       const res = await fetch('/api/rate-excuse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ excuse: excuseText }),
+        body: JSON.stringify({ excuse: excuseText, context }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
