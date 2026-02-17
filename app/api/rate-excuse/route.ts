@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateText } from '@/lib/ai';
-import { sanitizeInput, wrapUserContent, SYSTEM_GUARD } from '@/lib/guardrails';
+import { sanitizeInput, wrapUserContent, stripGuardrailTags, SYSTEM_GUARD } from '@/lib/guardrails';
 
 export interface RatingResult {
   grade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
@@ -77,6 +77,9 @@ Return ONLY the JSON object.`;
     if (!rating.grade || rating.score === undefined || !rating.verdict || !rating.tips) {
       throw new Error('Invalid rating structure');
     }
+    // Strip any leaked XML tags from text fields
+    rating.verdict = stripGuardrailTags(rating.verdict);
+    rating.tips = rating.tips.map(stripGuardrailTags);
     return NextResponse.json(rating);
   } catch (error) {
     console.error('Rating error, using fallback:', error);

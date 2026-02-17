@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from '@/lib/ai';
-import { sanitizeInput, SYSTEM_GUARD } from '@/lib/guardrails';
+import { sanitizeInput, stripGuardrailTags, SYSTEM_GUARD } from '@/lib/guardrails';
 
 const SCENARIOS = [
   'late to work',
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   try {
     const excuse = await generateText(prompt);
     return NextResponse.json({
-      excuse: excuse.trim(),
+      excuse: stripGuardrailTags(excuse.trim()),
       scenario,
       date: today,
       context: safeContext,

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateText } from '@/lib/ai';
-import { sanitizeInput, wrapUserContent, SYSTEM_GUARD } from '@/lib/guardrails';
+import { sanitizeInput, wrapUserContent, stripGuardrailTags, SYSTEM_GUARD } from '@/lib/guardrails';
 
 export interface FixResult {
   original: string;
@@ -49,9 +49,9 @@ Reply ONLY with valid JSON (no markdown, no backticks):
       const parsed = JSON.parse(cleaned);
       result = {
         original: sanitized.text,
-        fixed: parsed.fixed,
+        fixed: stripGuardrailTags(parsed.fixed),
         grade: parsed.grade ?? 'A',
-        tip: parsed.tip ?? '',
+        tip: stripGuardrailTags(parsed.tip ?? ''),
       };
     } catch {
       result = {
