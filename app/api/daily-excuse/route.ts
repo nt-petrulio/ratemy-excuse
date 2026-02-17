@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from '@/lib/ai';
+import { sanitizeInput, SYSTEM_GUARD } from '@/lib/guardrails';
 
 const SCENARIOS = [
   'late to work',
@@ -19,12 +20,16 @@ const FALLBACK_EXCUSES: Record<string, string> = {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const context = searchParams.get('context') || 'work';
+  const rawContext = searchParams.get('context') || 'work';
+
+  // Guardrail: sanitize the context param (it's user-supplied via URL)
+  const sanitized = sanitizeInput(rawContext);
+  const safeContext = sanitized.safe ? sanitized.text.slice(0, 50) : 'work';
 
   const scenario = SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)];
   const today = new Date().toISOString().split('T')[0];
 
-  const prompt = `You are writing excuses that real humans actually use. Write in a casual, natural voice — like a real person talking, not an AI. Use contractions, slight imperfection, natural hesitation phrases ("honestly", "I totally forgot", "it's been crazy"). Context: excuse for ${context}. The situation is: "${scenario}". Keep it 1-2 sentences max. Make it believable and relatable. Just write the excuse text directly, no preamble or quotation marks.`;
+  const prompt = `${SYSTEM_GUARD}You are writing excuses that real humans actually use. Write in a casual, natural voice — like a real person talking, not an AI. Use contractions, slight imperfection, natural hesitation phrases ("honestly", "I totally forgot", "it's been crazy"). Context: excuse for ${safeContext}. The situation is: "${scenario}". Keep it 1-2 sentences max. Make it believable and relatable. Just write the excuse text directly, no preamble or quotation marks.`;
 
   try {
     const excuse = await generateText(prompt);
@@ -32,7 +37,7 @@ export async function GET(request: NextRequest) {
       excuse: excuse.trim(),
       scenario,
       date: today,
-      context,
+      context: safeContext,
     });
   } catch (error) {
     console.error('AI error, using fallback:', error);
@@ -40,7 +45,7 @@ export async function GET(request: NextRequest) {
       excuse: FALLBACK_EXCUSES[scenario],
       scenario,
       date: today,
-      context,
+      context: safeContext,
       fallback: true,
     });
   }

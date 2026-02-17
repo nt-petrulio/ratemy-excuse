@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateText } from '@/lib/ai';
+import { sanitizeInput, wrapUserContent, SYSTEM_GUARD } from '@/lib/guardrails';
 
 export interface RatingResult {
   grade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
@@ -31,12 +32,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No excuse provided' }, { status: 400 });
   }
 
-  const contextLine = context ? `Context: this is an excuse for ${context}.\n` : '';
+  // Guardrail: sanitize user input
+  const sanitized = sanitizeInput(excuse);
+  if (!sanitized.safe) {
+    return NextResponse.json({ error: 'Nice try 😏 Provide an actual excuse.' }, { status: 400 });
+  }
 
-  const prompt = `You're a witty, slightly sarcastic friend rating someone's excuse. Be honest but funny. Use casual language, not corporate speak. Grade from A+ to F.
+  // Sanitize context too (less critical, but still)
+  const safeContext = context ? sanitizeInput(context).text.slice(0, 50) : 'work';
+  const contextLine = `Context: this is an excuse for ${safeContext}.\n`;
 
-The excuse: "${excuse.trim()}"
+  const prompt = `${SYSTEM_GUARD}You're a witty, slightly sarcastic friend rating someone's excuse. Be honest but funny. Use casual language, not corporate speak. Grade from A+ to F.
+
 ${contextLine}
+Rate the excuse below:
+${wrapUserContent(sanitized.text)}
+
 Return ONLY a valid JSON object (no markdown, no explanation) with these exact fields:
 {
   "grade": "A+", "A", "B", "C", "D", or "F",
@@ -59,24 +70,13 @@ Return ONLY the JSON object.`;
 
   try {
     const raw = await generateText(prompt);
-
-    // Strip any markdown code fences
-    const cleaned = raw
-      .replace(/```json\s*/gi, '')
-      .replace(/```\s*/gi, '')
-      .trim();
-
-    // Extract JSON object
+    const cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON found in response');
-
     const rating = JSON.parse(jsonMatch[0]) as RatingResult;
-
-    // Validate required fields
     if (!rating.grade || rating.score === undefined || !rating.verdict || !rating.tips) {
       throw new Error('Invalid rating structure');
     }
-
     return NextResponse.json(rating);
   } catch (error) {
     console.error('Rating error, using fallback:', error);
